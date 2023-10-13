@@ -13,9 +13,9 @@ using namespace std;
 
 #define MAX_PLY 3
 
-class Board;
+class GameManager;
 
-class Board
+class GameManager
 {
 private:
     vector<vector<int>> board;
@@ -26,26 +26,43 @@ private:
     int current;
 
 public:
-    Board();
-    ~Board() {}
+    GameManager();
+    ~GameManager() {}
 
     void printBoard(void);
-    void Evaluate(void);
+    int evaluate(void);
+    void userMove(void);
+    bool movePawn(int sx, int sy, int gx, int gy);
+
+    int get_user(void) const { return user; }
 };
 
 int main(void)
 {
-    Board game_board;
+    GameManager manager;
+    int game_over = 0;
 
     // test///////////////////
-    game_board.printBoard();
+    while (game_over == 0)
+    {
+        game_over = manager.evaluate();
+        manager.printBoard();
+
+        if (game_over)
+        {
+            cout << (game_over == manager.get_user() ? "HUMAN" : "COMPUTER") << " WIN" << endl;
+            break;
+        }
+
+        manager.userMove();
+    }
     //////////////////////////
 
     return 0;
 }
 
 // Get information and Initiate board staus
-Board::Board() : board(3, vector<int>(3, 0)), value(3, 0)
+GameManager::GameManager() : board(3, vector<int>(3, 0)), value(3, 0)
 {
     string temp;
 
@@ -106,7 +123,7 @@ Board::Board() : board(3, vector<int>(3, 0)), value(3, 0)
 }
 
 /* Print board state and value method */
-void Board::printBoard(void)
+void GameManager::printBoard(void)
 {
     // Print board state
     cout << "忙式成式成式忖" << endl;
@@ -120,7 +137,6 @@ void Board::printBoard(void)
     cout << "戌式扛式扛式戎" << endl;
 
     // Print value
-    Evaluate();
     cout << "computer: " << value[opponent] << endl;
     cout << "human: " << value[user] << endl
          << endl;
@@ -128,8 +144,11 @@ void Board::printBoard(void)
 }
 
 /*  Evaluate method
-    Evaluate board state and store in value vector */
-void Board::Evaluate(void)
+    Evaluate board state and store in value vector
+    return 1 if white win
+    return 2 if black win
+    return 0 if game in progress */
+int GameManager::evaluate(void)
 {
     // Check if game end
     // 1. No one's pawn on the board
@@ -161,13 +180,13 @@ void Board::Evaluate(void)
     {
         value[user] = 100;
         value[opponent] = -100;
-        return;
+        return user;
     }
     else if ((!user_exist) || op_reached) // opponent win
     {
         value[opponent] = 100;
         value[user] = -100;
-        return;
+        return opponent;
     }
 
     // Evaluate with board in progress
@@ -193,4 +212,122 @@ void Board::Evaluate(void)
         value[user] = b_val;
         value[opponent] = w_val;
     }
+
+    return EMPTY;
+}
+
+/*  User's move method
+    Get user's move and update board state after move */
+void GameManager::userMove(void)
+{
+    int sx, sy;
+    int gx, gy;
+
+    // Get starting coordinate
+    do
+    {
+        cout << "Selet the starting coordinate of pawn want to move: ";
+        cin >> sx >> sy;
+
+        // Out of range
+        if (sx < 0 || sx > 2 || sy < 0 || sy > 2)
+        {
+            cout << "Out Of Range!" << endl;
+            continue;
+        }
+
+        // Empty
+        if (board[sx][sy] == EMPTY)
+            printf("There is NO pawn at (%d, %d)!\n", sx, sy);
+        // Opponent's pawn
+        else if (board[sx][sy] == opponent)
+            cout << "You cannot move opponent's pawn!" << endl;
+    } while (board[sx][sy] != user); // until user's pawn selected
+
+    do
+    {
+        cout << "Selet the destination coordinate of pawn: ";
+        cin >> gx >> gy;
+
+        // Out of range
+        if (gx < 0 || gx > 2 || gy < 0 || gy > 2)
+        {
+            cout << "Out Of Range!" << endl;
+            continue;
+        }
+        else if (gx == sx && gy == sy)
+        {
+            cout << "You must move the pawn in your turn!" << endl;
+            continue;
+        }
+    } while (!movePawn(sx, sy, gx, gy)); // until move succeed
+
+    return;
+}
+
+/*  Move pawn method
+    Input: start_x, start_y, goal_x, goal_y
+    Move pawn at (start_x, start_y) to (goal_x, goal_y)
+    return true if move succeed
+    return false is move fail   */
+bool GameManager::movePawn(int sx, int sy, int gx, int gy)
+{
+    // Move white pawn
+    if (board[sx][sy] == WHITE)
+    {
+        if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
+            return false;
+        else if (board[gx][gy] == WHITE) // blocked by white pawn
+            return false;
+        // BLACK pawn exist
+        else if (board[gx][gy] == BLACK)
+            if ((sx + 1 == gx) && (sy != gy)) // kill by diagonal move
+            {
+                board[gx][gy] = board[sx][sy];
+                board[sx][sy] = EMPTY;
+                return true;
+            }
+            else // blocked by black pawn
+                return false;
+        else if (board[gx][gy] == EMPTY) // destination is empty
+            if ((gx - sx) * (gy - sy) == 0)
+            {
+                board[gx][gy] = board[sx][sy];
+                board[sx][sy] = EMPTY;
+                return true;
+            }
+            else // cannot diagonal move
+                return false;
+    }
+    // Move black pawn
+    else if (board[sx][sy] == BLACK)
+    {
+        if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
+            return false;
+        else if (board[gx][gy] == BLACK) // blocked by black pawn
+            return false;
+        // WHITE pawn exist
+        else if (board[gx][gy] == WHITE)
+        {
+            if ((sx - 1 == gx) && (sy != gy)) // kill by diagonal move
+            {
+                board[gx][gy] = board[sx][sy];
+                board[sx][sy] = EMPTY;
+                return true;
+            }
+            else // blocked by white pawn
+                return false;
+        }
+        else if (board[gx][gy] == EMPTY) // destination is empty
+            if ((gx - sx) * (gy - sy) == 0)
+            {
+                board[gx][gy] = board[sx][sy];
+                board[sx][sy] = EMPTY;
+                return true;
+            }
+            else // cannot diagonal move
+                return false;
+    }
+
+    return false;
 }
