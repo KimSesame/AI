@@ -19,6 +19,7 @@ class GameManager;
 int isTerminate(const vector<vector<int>> board);
 int value(const vector<vector<int>> board, int user);
 Node *generateGameTree(int depth, Node *parent = nullptr);
+int abPruning(Node *node, int depth, int a, int b, int cut);
 
 // Game-Tree node
 struct Node
@@ -77,6 +78,7 @@ int main(void)
         }
 
         manager.userMove();
+        manager.comMove();
     }
     //////////////////////////
 
@@ -159,6 +161,7 @@ void GameManager::printBoard(void)
     cout << "¦¦¦¡¦ª¦¡¦ª¦¡¦¥" << endl;
 
     // Print value
+    evaluate();
     cout << "computer: " << value[opponent] << endl;
     cout << "human: " << value[user] << endl
          << endl;
@@ -269,9 +272,22 @@ void GameManager::userMove(void)
 void GameManager::comMove(void)
 {
     Node *root = new Node(board, 0, 0, 0, 0);
+    int max_v;
 
     // Generate tree
     generateGameTree(MAX_PLY + 1);
+    // A-B Pruning
+    max_v = abPruning(root, MAX_PLY, -101, 101, 1);
+
+    // Move pawn with result of abPruning
+    for (auto child : root->children)
+        if (child->v == max_v)
+        {
+            movePawn(child->sx, child->sy, child->gx, child->gy);
+            break;
+        }
+
+    return;
 }
 
 /*  Move pawn method
@@ -431,69 +447,72 @@ Node *generateGameTree(int depth, Node *parent)
                 if (board[sx][sy] == manager.get_com())
                     for (int gx = 0; gx < 3; gx++)
                         for (int gy = 0; gy < 3; gy++)
-                            // Move white pawn
-                            if (board[sx][sy] == WHITE)
+                            if (!(gx == sx && gy == sy))
                             {
-                                if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
+                                // Move white pawn
+                                if (board[sx][sy] == WHITE)
                                 {
+                                    if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
+                                    {
+                                    }
+                                    else if (board[gx][gy] == WHITE) // blocked by white pawn
+                                    {
+                                    }
+                                    // BLACK pawn exist
+                                    else if (board[gx][gy] == BLACK)
+                                        if ((sx + 1 == gx) && (sy != gy)) // kill by diagonal move
+                                        {
+                                            board[gx][gy] = board[sx][sy];
+                                            board[sx][sy] = EMPTY;
+                                            new_node = new Node(board, sx, sy, gx, gy);
+                                        }
+                                        else // blocked by black pawn
+                                        {
+                                        }
+                                    else if (board[gx][gy] == EMPTY) // destination is empty
+                                        if ((gx - sx) * (gy - sy) == 0)
+                                        {
+                                            board[gx][gy] = board[sx][sy];
+                                            board[sx][sy] = EMPTY;
+                                            new_node = new Node(board, sx, sy, gx, gy);
+                                        }
+                                        else // cannot diagonal move
+                                        {
+                                        }
                                 }
-                                else if (board[gx][gy] == WHITE) // blocked by white pawn
+                                // Move black pawn
+                                else if (board[sx][sy] == BLACK)
                                 {
+                                    if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
+                                    {
+                                    }
+                                    else if (board[gx][gy] == BLACK) // blocked by black pawn
+                                    {
+                                    }
+                                    // WHITE pawn exist
+                                    else if (board[gx][gy] == WHITE)
+                                    {
+                                        if ((sx - 1 == gx) && (sy != gy)) // kill by diagonal move
+                                        {
+                                            board[gx][gy] = board[sx][sy];
+                                            board[sx][sy] = EMPTY;
+                                            new_node = new Node(board, sx, sy, gx, gy);
+                                        }
+                                        else // blocked by white pawn
+                                        {
+                                        }
+                                    }
+                                    else if (board[gx][gy] == EMPTY) // destination is empty
+                                        if ((gx - sx) * (gy - sy) == 0)
+                                        {
+                                            board[gx][gy] = board[sx][sy];
+                                            board[sx][sy] = EMPTY;
+                                            new_node = new Node(board, sx, sy, gx, gy);
+                                        }
+                                        else // cannot diagonal move
+                                        {
+                                        }
                                 }
-                                // BLACK pawn exist
-                                else if (board[gx][gy] == BLACK)
-                                    if ((sx + 1 == gx) && (sy != gy)) // kill by diagonal move
-                                    {
-                                        board[gx][gy] = board[sx][sy];
-                                        board[sx][sy] = EMPTY;
-                                        new_node = new Node(board, sx, sy, gx, gy);
-                                    }
-                                    else // blocked by black pawn
-                                    {
-                                    }
-                                else if (board[gx][gy] == EMPTY) // destination is empty
-                                    if ((gx - sx) * (gy - sy) == 0)
-                                    {
-                                        board[gx][gy] = board[sx][sy];
-                                        board[sx][sy] = EMPTY;
-                                        new_node = new Node(board, sx, sy, gx, gy);
-                                    }
-                                    else // cannot diagonal move
-                                    {
-                                    }
-                            }
-                            // Move black pawn
-                            else if (board[sx][sy] == BLACK)
-                            {
-                                if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
-                                {
-                                }
-                                else if (board[gx][gy] == BLACK) // blocked by black pawn
-                                {
-                                }
-                                // WHITE pawn exist
-                                else if (board[gx][gy] == WHITE)
-                                {
-                                    if ((sx - 1 == gx) && (sy != gy)) // kill by diagonal move
-                                    {
-                                        board[gx][gy] = board[sx][sy];
-                                        board[sx][sy] = EMPTY;
-                                        new_node = new Node(board, sx, sy, gx, gy);
-                                    }
-                                    else // blocked by white pawn
-                                    {
-                                    }
-                                }
-                                else if (board[gx][gy] == EMPTY) // destination is empty
-                                    if ((gx - sx) * (gy - sy) == 0)
-                                    {
-                                        board[gx][gy] = board[sx][sy];
-                                        board[sx][sy] = EMPTY;
-                                        new_node = new Node(board, sx, sy, gx, gy);
-                                    }
-                                    else // cannot diagonal move
-                                    {
-                                    }
                             }
     }
 
@@ -502,8 +521,49 @@ Node *generateGameTree(int depth, Node *parent)
     new_node->children.push_back(generateGameTree(depth - 1, new_node));
 
     // Terminal node
-    if (depth == 1)
+    if (depth == 1 || isTerminate(new_node->board))
         new_node->v = value(new_node->board, manager.get_com()); // evaluate value
 
     return new_node;
+}
+
+/*  Alpha-Beta Pruning Function
+    node: starting from root
+    depth: current depth
+    a: Alpha
+    b: Beta
+    cut: 0(alpha-cut), 1(beta-cut)  */
+int abPruning(Node *node, int depth, int a, int b, int cut)
+{
+    int v;
+
+    if (depth == 0 || isTerminate(node->board))
+        return node->v;
+
+    // A-B Pruning
+    if (cut == 0)
+    {
+        v = 101;
+        for (auto child : node->children)
+        {
+            v = min(v, abPruning(child, depth - 1, a, b, 1));
+            b = min(b, v);
+            if (b <= a) // alpha-cut
+                break;
+        }
+    }
+    else
+    {
+        v = -101;
+        for (auto child : node->children)
+        {
+            v = max(v, abPruning(child, depth - 1, a, b, 1));
+            a = max(a, v);
+            if (b <= a) // beta-cut
+                break;
+        }
+    }
+
+    node->v = v;
+    return v;
 }
