@@ -150,15 +150,15 @@ GameManager::GameManager() : board(3, vector<int>(3, 0)), value(3, 0)
 void GameManager::printBoard(void)
 {
     // Print board state
-    cout << "忙式成式成式忖" << endl;
+    cout << "=======" << endl;
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
-            cout << "弛" << (board[i][j] ? (board[i][j] == WHITE ? "W" : "B") : " ");
-        cout << "弛" << endl;
-        cout << ((i != 2) ? "戍式托式托式扣\n" : "");
+            cout << "|" << (board[i][j] ? (board[i][j] == WHITE ? "W" : "B") : " ");
+        cout << "|" << endl;
+        cout << ((i != 2) ? "=======\n" : "");
     }
-    cout << "戌式扛式扛式戎" << endl;
+    cout << "=======" << endl;
 
     // Print value
     evaluate();
@@ -271,11 +271,11 @@ void GameManager::userMove(void)
     Get computer's move by min-max algorithm with Alpha-Beta pruing and update board state after move */
 void GameManager::comMove(void)
 {
-    Node *root = new Node(board, 0, 0, 0, 0);
+    Node *root;
     int max_v;
 
     // Generate tree
-    generateGameTree(MAX_PLY + 1);
+    root = generateGameTree(MAX_PLY + 1);
     // A-B Pruning
     max_v = abPruning(root, MAX_PLY, -101, 101, 1);
 
@@ -436,7 +436,11 @@ Node *generateGameTree(int depth, Node *parent)
 
     // Generate node if possible move
     if (parent == nullptr) // game tree root
+    {
         new_node = new Node(manager.get_board(), 0, 0, 0, 0);
+        new_node->parent = parent;
+        new_node->children.push_back(generateGameTree(depth - 1, new_node));
+    }
     else
     {
         vector<vector<int>> board(parent->board);
@@ -462,9 +466,16 @@ Node *generateGameTree(int depth, Node *parent)
                                     else if (board[gx][gy] == BLACK)
                                         if ((sx + 1 == gx) && (sy != gy)) // kill by diagonal move
                                         {
+                                            // Update board
                                             board[gx][gy] = board[sx][sy];
                                             board[sx][sy] = EMPTY;
+
                                             new_node = new Node(board, sx, sy, gx, gy);
+                                            new_node->parent = parent;
+                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
+                                            // Restore board
+                                            board[sx][sy] = WHITE;
+                                            board[gx][gy] = BLACK;
                                         }
                                         else // blocked by black pawn
                                         {
@@ -472,9 +483,17 @@ Node *generateGameTree(int depth, Node *parent)
                                     else if (board[gx][gy] == EMPTY) // destination is empty
                                         if ((gx - sx) * (gy - sy) == 0)
                                         {
+                                            // Update board
                                             board[gx][gy] = board[sx][sy];
                                             board[sx][sy] = EMPTY;
+
                                             new_node = new Node(board, sx, sy, gx, gy);
+                                            new_node->parent = parent;
+                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
+
+                                            // Restore board
+                                            board[sx][sy] = WHITE;
+                                            board[gx][gy] = EMPTY;
                                         }
                                         else // cannot diagonal move
                                         {
@@ -494,9 +513,17 @@ Node *generateGameTree(int depth, Node *parent)
                                     {
                                         if ((sx - 1 == gx) && (sy != gy)) // kill by diagonal move
                                         {
+                                            // Update board
                                             board[gx][gy] = board[sx][sy];
                                             board[sx][sy] = EMPTY;
+
                                             new_node = new Node(board, sx, sy, gx, gy);
+                                            new_node->parent = parent;
+                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
+
+                                            // Restore board
+                                            board[sx][sy] = BLACK;
+                                            board[gx][gy] = WHITE;
                                         }
                                         else // blocked by white pawn
                                         {
@@ -505,9 +532,17 @@ Node *generateGameTree(int depth, Node *parent)
                                     else if (board[gx][gy] == EMPTY) // destination is empty
                                         if ((gx - sx) * (gy - sy) == 0)
                                         {
+                                            // Update board
                                             board[gx][gy] = board[sx][sy];
                                             board[sx][sy] = EMPTY;
+
                                             new_node = new Node(board, sx, sy, gx, gy);
+                                            new_node->parent = parent;
+                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
+
+                                            // Restore board
+                                            board[sx][sy] = BLACK;
+                                            board[gx][gy] = EMPTY;
                                         }
                                         else // cannot diagonal move
                                         {
@@ -515,10 +550,6 @@ Node *generateGameTree(int depth, Node *parent)
                                 }
                             }
     }
-
-    // Set parent-child connection
-    new_node->parent = parent;
-    new_node->children.push_back(generateGameTree(depth - 1, new_node));
 
     // Terminal node
     if (depth == 1 || isTerminate(new_node->board))
@@ -557,7 +588,7 @@ int abPruning(Node *node, int depth, int a, int b, int cut)
         v = -101;
         for (auto child : node->children)
         {
-            v = max(v, abPruning(child, depth - 1, a, b, 1));
+            v = max(v, abPruning(child, depth - 1, a, b, 0));
             a = max(a, v);
             if (b <= a) // beta-cut
                 break;
