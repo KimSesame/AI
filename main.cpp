@@ -56,6 +56,7 @@ public:
 
     int get_user(void) const { return user; }
     int get_com(void) const { return opponent; }
+    int get_current(void) const { return current; }
     vector<vector<int>> get_board(void) const { return board; }
 };
 
@@ -68,6 +69,9 @@ int main(void)
     // test///////////////////
     while (game_over == 0)
     {
+        if (manager.get_current() == manager.get_com())
+            manager.comMove();
+
         game_over = isTerminate(manager.get_board());
         manager.printBoard();
 
@@ -264,6 +268,7 @@ void GameManager::userMove(void)
         }
     } while (!movePawn(sx, sy, gx, gy)); // until move succeed
 
+    current = opponent;
     return;
 }
 
@@ -293,6 +298,7 @@ void GameManager::comMove(void)
             break;
         }
 
+    current = user;
     return;
 }
 
