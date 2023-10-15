@@ -18,7 +18,7 @@ class GameManager;
 
 int isTerminate(const vector<vector<int>> board);
 int value(const vector<vector<int>> board, int user);
-Node *generateGameTree(int depth, Node *parent = nullptr);
+void generateGameTree(Node *root);
 int abPruning(Node *node, int depth, int a, int b, int cut);
 
 // Game-Tree node
@@ -271,11 +271,17 @@ void GameManager::userMove(void)
     Get computer's move by min-max algorithm with Alpha-Beta pruing and update board state after move */
 void GameManager::comMove(void)
 {
-    Node *root;
+    Node *root = new Node(manager.get_board(), 0, 0, 0, 0);
     int max_v;
 
     // Generate tree
-    root = generateGameTree(MAX_PLY + 1);
+    generateGameTree(root);
+    for (auto child : root->children)
+        generateGameTree(child);
+    for (auto child : root->children)
+        for (auto cchild : child->children)
+            generateGameTree(cchild);
+
     // A-B Pruning
     max_v = abPruning(root, MAX_PLY, -101, 101, 1);
 
@@ -427,135 +433,125 @@ int value(const vector<vector<int>> board, int user)
 }
 
 /*  Generate game tree using DFS */
-Node *generateGameTree(int depth, Node *parent)
+void generateGameTree(Node *root)
 {
     Node *new_node;
 
-    if (depth == 0)
-        return nullptr;
+    if (isTerminate(root->board))
+        return;
 
     // Generate node if possible move
-    if (parent == nullptr) // game tree root
-    {
-        new_node = new Node(manager.get_board(), 0, 0, 0, 0);
-        new_node->parent = parent;
-        new_node->children.push_back(generateGameTree(depth - 1, new_node));
-    }
-    else
-    {
-        vector<vector<int>> board(parent->board);
+    vector<vector<int>> board(root->board);
 
-        for (int sx = 0; sx < 3; sx++)
-            for (int sy = 0; sy < 3; sy++)
-                // Computer's pawn selected
-                if (board[sx][sy] == manager.get_com())
-                    for (int gx = 0; gx < 3; gx++)
-                        for (int gy = 0; gy < 3; gy++)
-                            if (!(gx == sx && gy == sy))
+    for (int sx = 0; sx < 3; sx++)
+        for (int sy = 0; sy < 3; sy++)
+            // Computer's pawn selected
+            if (board[sx][sy] == manager.get_com())
+                for (int gx = 0; gx < 3; gx++)
+                    for (int gy = 0; gy < 3; gy++)
+                        if (!(gx == sx && gy == sy))
+                        {
+                            // Move white pawn
+                            if (board[sx][sy] == WHITE)
                             {
-                                // Move white pawn
-                                if (board[sx][sy] == WHITE)
+                                if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
                                 {
-                                    if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
-                                    {
-                                    }
-                                    else if (board[gx][gy] == WHITE) // blocked by white pawn
-                                    {
-                                    }
-                                    // BLACK pawn exist
-                                    else if (board[gx][gy] == BLACK)
-                                        if ((sx + 1 == gx) && (sy != gy)) // kill by diagonal move
-                                        {
-                                            // Update board
-                                            board[gx][gy] = board[sx][sy];
-                                            board[sx][sy] = EMPTY;
-
-                                            new_node = new Node(board, sx, sy, gx, gy);
-                                            new_node->parent = parent;
-                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
-                                            // Restore board
-                                            board[sx][sy] = WHITE;
-                                            board[gx][gy] = BLACK;
-                                        }
-                                        else // blocked by black pawn
-                                        {
-                                        }
-                                    else if (board[gx][gy] == EMPTY) // destination is empty
-                                        if ((gx - sx) * (gy - sy) == 0)
-                                        {
-                                            // Update board
-                                            board[gx][gy] = board[sx][sy];
-                                            board[sx][sy] = EMPTY;
-
-                                            new_node = new Node(board, sx, sy, gx, gy);
-                                            new_node->parent = parent;
-                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
-
-                                            // Restore board
-                                            board[sx][sy] = WHITE;
-                                            board[gx][gy] = EMPTY;
-                                        }
-                                        else // cannot diagonal move
-                                        {
-                                        }
                                 }
-                                // Move black pawn
-                                else if (board[sx][sy] == BLACK)
+                                else if (board[gx][gy] == WHITE) // blocked by white pawn
                                 {
-                                    if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
-                                    {
-                                    }
-                                    else if (board[gx][gy] == BLACK) // blocked by black pawn
-                                    {
-                                    }
-                                    // WHITE pawn exist
-                                    else if (board[gx][gy] == WHITE)
-                                    {
-                                        if ((sx - 1 == gx) && (sy != gy)) // kill by diagonal move
-                                        {
-                                            // Update board
-                                            board[gx][gy] = board[sx][sy];
-                                            board[sx][sy] = EMPTY;
-
-                                            new_node = new Node(board, sx, sy, gx, gy);
-                                            new_node->parent = parent;
-                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
-
-                                            // Restore board
-                                            board[sx][sy] = BLACK;
-                                            board[gx][gy] = WHITE;
-                                        }
-                                        else // blocked by white pawn
-                                        {
-                                        }
-                                    }
-                                    else if (board[gx][gy] == EMPTY) // destination is empty
-                                        if ((gx - sx) * (gy - sy) == 0)
-                                        {
-                                            // Update board
-                                            board[gx][gy] = board[sx][sy];
-                                            board[sx][sy] = EMPTY;
-
-                                            new_node = new Node(board, sx, sy, gx, gy);
-                                            new_node->parent = parent;
-                                            new_node->children.push_back(generateGameTree(depth - 1, new_node));
-
-                                            // Restore board
-                                            board[sx][sy] = BLACK;
-                                            board[gx][gy] = EMPTY;
-                                        }
-                                        else // cannot diagonal move
-                                        {
-                                        }
                                 }
+                                // BLACK pawn exist
+                                else if (board[gx][gy] == BLACK)
+                                    if ((sx + 1 == gx) && (sy != gy)) // kill by diagonal move
+                                    {
+                                        // Update board
+                                        board[gx][gy] = board[sx][sy];
+                                        board[sx][sy] = EMPTY;
+
+                                        new_node = new Node(board, sx, sy, gx, gy);
+                                        new_node->parent = root;
+                                        new_node->v = value(board, manager.get_com());
+                                        root->children.push_back(new_node);
+
+                                        // Restore board
+                                        board[sx][sy] = WHITE;
+                                        board[gx][gy] = BLACK;
+                                    }
+                                    else // blocked by black pawn
+                                    {
+                                    }
+                                else if (board[gx][gy] == EMPTY) // destination is empty
+                                    if ((gx - sx) * (gy - sy) == 0)
+                                    {
+                                        // Update board
+                                        board[gx][gy] = board[sx][sy];
+                                        board[sx][sy] = EMPTY;
+
+                                        new_node = new Node(board, sx, sy, gx, gy);
+                                        new_node->parent = root;
+                                        new_node->v = value(board, manager.get_com());
+                                        root->children.push_back(new_node);
+
+                                        // Restore board
+                                        board[sx][sy] = WHITE;
+                                        board[gx][gy] = EMPTY;
+                                    }
+                                    else // cannot diagonal move
+                                    {
+                                    }
                             }
-    }
+                            // Move black pawn
+                            else if (board[sx][sy] == BLACK)
+                            {
+                                if ((abs(gx - sx) > 1) || (abs(gy - sy) > 1)) // too far
+                                {
+                                }
+                                else if (board[gx][gy] == BLACK) // blocked by black pawn
+                                {
+                                }
+                                // WHITE pawn exist
+                                else if (board[gx][gy] == WHITE)
+                                {
+                                    if ((sx - 1 == gx) && (sy != gy)) // kill by diagonal move
+                                    {
+                                        // Update board
+                                        board[gx][gy] = board[sx][sy];
+                                        board[sx][sy] = EMPTY;
 
-    // Terminal node
-    if (depth == 1 || isTerminate(new_node->board))
-        new_node->v = value(new_node->board, manager.get_com()); // evaluate value
+                                        new_node = new Node(board, sx, sy, gx, gy);
+                                        new_node->parent = root;
+                                        new_node->v = value(board, manager.get_com());
+                                        root->children.push_back(new_node);
 
-    return new_node;
+                                        // Restore board
+                                        board[sx][sy] = BLACK;
+                                        board[gx][gy] = WHITE;
+                                    }
+                                    else // blocked by white pawn
+                                    {
+                                    }
+                                }
+                                else if (board[gx][gy] == EMPTY) // destination is empty
+                                    if ((gx - sx) * (gy - sy) == 0)
+                                    {
+                                        // Update board
+                                        board[gx][gy] = board[sx][sy];
+                                        board[sx][sy] = EMPTY;
+
+                                        new_node = new Node(board, sx, sy, gx, gy);
+                                        new_node->parent = root;
+                                        new_node->v = value(board, manager.get_com());
+                                        root->children.push_back(new_node);
+
+                                        // Restore board
+                                        board[sx][sy] = BLACK;
+                                        board[gx][gy] = EMPTY;
+                                    }
+                                    else // cannot diagonal move
+                                    {
+                                    }
+                            }
+                        }
 }
 
 /*  Alpha-Beta Pruning Function
